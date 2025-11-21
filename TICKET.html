@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOS BUNDLES - Referral Program</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --color-red: #E74C3C;
+            --color-blue: #3498DB;
+            --color-yellow: #F1C40F;
+            --color-white: #FFFFFF;
+            --color-dark: #2C3E50;
+            --color-success: #2ECC71;
+            --color-pending: #F39C12;
+            --color-denied: #E74C3C;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--color-white) 0%, var(--color-red) 50%, var(--color-blue) 100%);
+            background-size: 300% 300%;
+            animation: gradient-shift 15s ease infinite;
+            min-height: 100vh;
+        }
+
+        @keyframes gradient-shift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* USER TICKET STYLING */
+        .ticket-container {
+            background: var(--color-white);
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+            border: 2px solid var(--color-dark);
+        }
+
+        .header {
+            padding: 15px;
+            background: var(--color-dark);
+            color: var(--color-white);
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 1.5em;
+            margin: 0;
+            font-weight: 800;
+            color: var(--color-yellow);
+        }
+
+        .content { padding: 15px; }
+
+        .user-info { margin-bottom: 15px; }
+        .user-info input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .referral-code {
+            background: #f8f8f8;
+            border-left: 5px solid var(--color-yellow);
+            padding: 12px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .progress-circles {
+            display: flex;
+            justify-content: space-between;
+            margin: 25px 0;
+            position: relative;
+            padding: 0 10px;
+        }
+        .progress-bar {
+            position: absolute;
+            height: 4px;
+            background: #eee;
+            width: calc(100% - 20px);
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--color-blue);
+            transition: width 0.5s;
+        }
+        .circle-wrapper {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            flex: 1;
+        }
+        .checkpoint-circle {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: var(--color-white);
+            border: 3px solid #ccc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 700;
+            transition: all 0.3s;
+            font-size: 14px;
+            margin: 0 auto;
+        }
+        .checkpoint-circle.pending { border-color: var(--color-pending); background: var(--color-pending); color: white; }
+        .checkpoint-circle.approved { border-color: var(--color-success); background: var(--color-success); color: white; }
+        .checkpoint-circle.denied { border-color: var(--color-denied); background: var(--color-denied); color: white; }
+
+        .status-indicator {
+            font-size: 0.65em;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+        .status-pending { color: var(--color-pending); }
+        .status-approved { color: var(--color-success); }
+        .status-denied { color: var(--color-denied); }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-invite { background: var(--color-blue); color: white; }
+        .btn-export { background: var(--color-yellow); color: var(--color-dark); }
+        .btn-claim { background: var(--color-success); color: white; }
+        .btn-claim:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-admin { background: var(--color-red); color: white; margin-top: 10px; }
+
+        /* ADMIN PANEL STYLING */
+        .admin-panel {
+            background: var(--color-white);
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            overflow: hidden;
+            border: 2px solid var(--color-red);
+            display: none; /* Hidden by default */
+        }
+
+        .admin-header {
+            padding: 15px;
+            background: var(--color-red);
+            color: var(--color-white);
+            text-align: center;
+        }
+        .admin-header h2 {
+            margin: 0;
+            font-size: 1.3em;
+        }
+
+        .referrals-list {
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .referral-item {
+            background: #f8f8f8;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--color-pending);
+        }
+        .referral-item.approved { border-left-color: var(--color-success); }
+        .referral-item.denied { border-left-color: var(--color-denied); }
+
+        .referral-info {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .referral-details h4 {
+            margin: 0 0 5px 0;
+            color: var(--color-dark);
+            font-size: 14px;
+        }
+        .referral-details p {
+            margin: 0;
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .admin-actions button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        .btn-approve { background: var(--color-success); color: white; }
+        .btn-deny { background: var(--color-denied); color: white; }
+        .btn-remove { background: #95a5a6; color: white; }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            padding: 12px;
+            background: #f3f3f3;
+            text-align: center;
+        }
+        .stat-box {
+            background: white;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .stat-number {
+            font-size: 1.2em;
+            font-weight: 800;
+            color: var(--color-dark);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--color-success);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 1000;
+            max-width: 300px;
+        }
+
+        /* ADMIN LOGIN MODAL */
+        .admin-login-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+        }
+
+        .admin-login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .admin-login-box h3 {
+            margin: 0 0 20px 0;
+            color: var(--color-dark);
+        }
+
+        .admin-login-box input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-align: center;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .admin-login-box input:focus {
+            outline: none;
+            border-color: var(--color-blue);
+        }
+
+        .admin-login-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .admin-login-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-login { background: var(--color-success); color: white; }
+        .btn-cancel { background: #95a5a6; color: white; }
+
+        /* PNG EXPORT STYLING */
+        .export-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .export-preview {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            max-width: 90%;
+            max-height: 90%;
+            overflow: auto;
+            text-align: center;
+        }
+
+        .export-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .export-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-download { background: var(--color-success); color: white; }
+        .btn-close-export { background: var(--color-denied); color: white; }
+
+        /* Share Progress Card */
+        .progress-card {
+            background: linear-gradient(135deg, var(--color-dark) 0%, var(--color-blue) 100%);
+            border-radius: 15px;
+            padding: 25px;
+            color: white;
+            text-align: center;
+            margin: 20px auto;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .progress-card h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.4em;
+            color: var(--color-yellow);
+        }
+
+        .progress-card .progress-count {
+            font-size: 3em;
+            font-weight: 800;
+            margin: 15px 0;
+            color: var(--color-yellow);
+        }
+
+        .progress-card .progress-text {
+            font-size: 1.1em;
+            margin: 10px 0;
+        }
+
+        .progress-card .sos-logo {
+            font-size: 2em;
+            font-weight: 800;
+            color: var(--color-yellow);
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Notification -->
+<div class="notification" id="notification"></div>
+
+<!-- Admin Login Modal -->
+<div class="admin-login-modal" id="adminLoginModal">
+    <div class="admin-login-box">
+        <h3>🔒 Admin Access</h3>
+        <p>Enter admin code to access the panel</p>
+        <input type="password" id="adminCodeInput" placeholder="Enter admin code" maxlength="6" oninput="formatAdminCode(this)">
+        <div class="admin-login-actions">
+            <button class="btn-cancel" onclick="closeAdminLogin()">Cancel</button>
+            <button class="btn-login" onclick="verifyAdminCode()">Access Panel</button>
+        </div>
+    </div>
+</div>
+
+<!-- PNG Export Modal -->
+<div class="export-container" id="exportContainer">
+    <div class="export-preview">
+        <h3>Share Your Progress</h3>
+        <div id="exportContent"></div>
+        <div class="export-actions">
+            <button class="btn-download" onclick="downloadPNG()">Download PNG</button>
+            <button class="btn-close-export" onclick="closeExport()">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    
+    <!-- USER TICKET -->
+    <div class="ticket-container">
+        <div class="header">
+            <h1>SOS BUNDLES</h1>
+            <p>Invite 5 Friends & Get 2GB Free!</p>
+        </div>
+
+        <div class="content">
+            <div class="user-info">
+                <label>Your Name:</label>
+                <input type="text" id="userName" placeholder="ENTER PHONE NUMBER AND NICK NAME HERE" value="">
+            </div>
+            
+            <div class="referral-code">
+                <strong>Your Referral Code:</strong> 
+                <span id="referralCode">SOS-JD1234</span>
+            </div>
+
+            <div class="progress-circles">
+                <div class="progress-bar"><div class="progress-bar-fill" id="progressBarFill"></div></div>
+                
+                <div class="circle-wrapper">
+                    <div class="checkpoint-circle" id="circle-1">1</div>
+                    <div class="status-indicator status-pending" id="status-1">Pending</div>
+                </div>
+                
+                <div class="circle-wrapper">
+                    <div class="checkpoint-circle" id="circle-2">2</div>
+                    <div class="status-indicator status-pending" id="status-2">Pending</div>
+                </div>
+                
+                <div class="circle-wrapper">
+                    <div class="checkpoint-circle" id="circle-3">3</div>
+                    <div class="status-indicator status-pending" id="status-3">Pending</div>
+                </div>
+                
+                <div class="circle-wrapper">
+                    <div class="checkpoint-circle" id="circle-4">4</div>
+                    <div class="status-indicator status-pending" id="status-4">Pending</div>
+                </div>
+                
+                <div class="circle-wrapper">
+                    <div class="checkpoint-circle" id="circle-5">5</div>
+                    <div class="status-indicator status-pending" id="status-5">Pending</div>
+                </div>
+            </div>
+
+            <p id="progressText" style="text-align: center; margin: 20px 0; font-weight: 600;">Share your code with friends! (0% Complete)</p>
+
+            <button class="btn btn-invite" onclick="shareReferral()">📱 Share Referral Code</button>
+            <button class="btn btn-export" onclick="exportProgress()">📤 Export Progress as PNG</button>
+            <button class="btn btn-claim" id="claimRewardBtn" disabled>🎁 Claim 2GB Free Data</button>
+            
+            <!-- Admin Access Button -->
+            <button class="btn btn-admin" onclick="openAdminLogin()">⚙️ Admin Panel</button>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL (Hidden by default) -->
+    <div class="admin-panel" id="adminPanel">
+        <div class="admin-header">
+            <h2>📊 ADMIN APPROVAL PANEL</h2>
+            <p>Approve or Deny Referrals</p>
+        </div>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number" id="totalReferrals">0</div>
+                <div>Total</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="pendingReferrals">0</div>
+                <div>Pending</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="approvedReferrals">0</div>
+                <div>Approved</div>
+            </div>
+        </div>
+
+        <div class="referrals-list" id="referralsList">
+            <div style="text-align: center; padding: 20px; color: #666;">
+                No pending referrals
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Progress Card Template for PNG Export -->
+<div id="progressCardTemplate" style="display: none;">
+    <div class="progress-card">
+        <div class="sos-logo">SOS BUNDLES</div>
+        <h3>Referral Progress</h3>
+        <div class="progress-count" id="exportProgressCount">0/5</div>
+        <div class="progress-text" id="exportProgressText">Keep sharing to earn 2GB FREE data!</div>
+        <div style="margin: 15px 0; font-size: 0.9em;">
+            Status: <strong id="exportStatus">In Progress</strong>
+        </div>
+        <div style="font-size: 0.8em; opacity: 0.8;">
+            Share your code: <strong id="exportReferralCode">SOS-XXXXXX</strong>
+        </div>
+    </div>
+</div>
+
+<script>
+// ===== ADMIN SECURITY =====
+const ADMIN_CODE = "800924"; // Your admin code
+let isAdminAuthenticated = false;
+
+function openAdminLogin() {
+    document.getElementById('adminLoginModal').style.display = 'flex';
+    document.getElementById('adminCodeInput').focus();
+}
+
+function closeAdminLogin() {
+    document.getElementById('adminLoginModal').style.display = 'none';
+    document.getElementById('adminCodeInput').value = '';
+}
+
+function formatAdminCode(input) {
+    // Only allow numbers
+    input.value = input.value.replace(/[^0-9]/g, '');
+}
+
+function verifyAdminCode() {
+    const enteredCode = document.getElementById('adminCodeInput').value;
+    
+    if (enteredCode === ADMIN_CODE) {
+        isAdminAuthenticated = true;
+        document.getElementById('adminPanel').style.display = 'block';
+        closeAdminLogin();
+        showNotification('🔓 Admin access granted!', 'success');
+        loadAdminPanel(); // Load the referrals data
+    } else {
+        showNotification('❌ Invalid admin code!', 'error');
+        document.getElementById('adminCodeInput').value = '';
+        document.getElementById('adminCodeInput').focus();
+    }
+}
+
+// ===== DATABASE SIMULATION =====
+class ReferralDB {
+    constructor() {
+        this.key = 'sos_referrals';
+        this.init();
+    }
+
+    init() {
+        if (!localStorage.getItem(this.key)) {
+            localStorage.setItem(this.key, JSON.stringify([]));
+        }
+    }
+
+    getAll() {
+        return JSON.parse(localStorage.getItem(this.key)) || [];
+    }
+
+    save(referrals) {
+        localStorage.setItem(this.key, JSON.stringify(referrals));
+    }
+
+    addReferral(referrerName, referralCode) {
+        const referrals = this.getAll();
+        const newReferral = {
+            id: Date.now().toString(),
+            referrerName: referrerName,
+            referralCode: referralCode,
+            status: 'pending',
+            friendName: `Friend ${referrals.filter(r => r.referrerName === referrerName).length + 1}`,
+            date: new Date().toISOString(),
+            timestamp: Date.now()
+        };
+        referrals.push(newReferral);
+        this.save(referrals);
+        return newReferral;
+    }
+
+    updateStatus(referralId, status) {
+        const referrals = this.getAll();
+        const referral = referrals.find(r => r.id === referralId);
+        if (referral) {
+            referral.status = status;
+            referral.processedAt = new Date().toISOString();
+            this.save(referrals);
+            return true;
+        }
+        return false;
+    }
+
+    removeReferral(referralId) {
+        const referrals = this.getAll();
+        const filtered = referrals.filter(r => r.id !== referralId);
+        this.save(filtered);
+        return filtered.length !== referrals.length;
+    }
+
+    getUserReferrals(referrerName) {
+        return this.getAll().filter(r => r.referrerName === referrerName);
+    }
+
+    getStats() {
+        const referrals = this.getAll();
+        return {
+            total: referrals.length,
+            pending: referrals.filter(r => r.status === 'pending').length,
+            approved: referrals.filter(r => r.status === 'approved').length,
+            denied: referrals.filter(r => r.status === 'denied').length
+        };
+    }
+}
+
+// ===== APPLICATION CODE =====
+const db = new ReferralDB();
+let currentUser = 'John Doe';
+
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.style.background = type === 'success' ? '#2ECC71' : '#E74C3C';
+    notification.style.display = 'block';
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+function updateUserProgress() {
+    const userReferrals = db.getUserReferrals(currentUser);
+    const approved = userReferrals.filter(r => r.status === 'approved').length;
+    const pending = userReferrals.filter(r => r.status === 'pending').length;
+    const denied = userReferrals.filter(r => r.status === 'denied').length;
+
+    // Update progress bar
+    const percentage = (approved / 5) * 100;
+    document.getElementById('progressBarFill').style.width = `${percentage}%`;
+
+    // Update circles and status
+    for (let i = 1; i <= 5; i++) {
+        const circle = document.getElementById(`circle-${i}`);
+        const status = document.getElementById(`status-${i}`);
+        
+        if (i <= approved) {
+            circle.className = 'checkpoint-circle approved';
+            circle.innerHTML = '✓';
+            status.textContent = 'Approved';
+            status.className = 'status-indicator status-approved';
+        } else if (i <= approved + pending) {
+            circle.className = 'checkpoint-circle pending';
+            circle.innerHTML = i;
+            status.textContent = 'Pending';
+            status.className = 'status-indicator status-pending';
+        } else if (i <= approved + pending + denied) {
+            circle.className = 'checkpoint-circle denied';
+            circle.innerHTML = '✗';
+            status.textContent = 'Denied';
+            status.className = 'status-indicator status-denied';
+        } else {
+            circle.className = 'checkpoint-circle';
+            circle.innerHTML = i;
+            status.textContent = 'Pending';
+            status.className = 'status-indicator status-pending';
+        }
+    }
+
+    // Update progress text
+    const progressText = document.getElementById('progressText');
+    if (approved >= 5) {
+        progressText.innerHTML = `🎉 All 5 referrals approved! (100% Complete)`;
+        document.getElementById('claimRewardBtn').disabled = false;
+    } else {
+        progressText.innerHTML = `${approved} approved, ${pending} pending. <strong>${5-approved} more needed!</strong> (${percentage.toFixed(0)}% Complete)`;
+        document.getElementById('claimRewardBtn').disabled = true;
+    }
+}
+
+function shareReferral() {
+    const userName = document.getElementById('userName').value || 'Anonymous';
+    const referralCode = document.getElementById('referralCode').textContent;
+    
+    // Add to database
+    const newReferral = db.addReferral(userName, referralCode);
+    
+    // Show notification
+    showNotification(`Referral shared! Waiting for admin approval.`);
+    
+    // Update displays
+    updateUserProgress();
+    if (isAdminAuthenticated) {
+        loadAdminPanel();
+    }
+    
+    // Mobile-friendly share
+    const message = `Join me on SOS BUNDLES! 🚀 Use my referral code: ${referralCode} - ${userName}\n\nGet amazing non-expiry data bundles!\n\nVisit: https://inventor40028.github.io/sos_bundles/sos_bundle_website`;
+    
+    if (navigator.share) {
+        // Use Web Share API for mobile
+        navigator.share({
+            title: 'SOS BUNDLES Referral',
+            text: message,
+            url: 'https://inventor40028.github.io/sos_bundles/sos_bundle_website'
+        }).catch(() => {
+            // Fallback to clipboard
+            navigator.clipboard.writeText(message).then(() => {
+                showNotification('Referral message copied to clipboard!');
+            });
+        });
+    } else {
+        // Fallback for desktop
+        navigator.clipboard.writeText(message).then(() => {
+            showNotification('Referral message copied to clipboard!');
+        });
+    }
+}
+
+function exportProgress() {
+    const userReferrals = db.getUserReferrals(currentUser);
+    const approved = userReferrals.filter(r => r.status === 'approved').length;
+    const total = 5;
+    
+    // Update export template
+    document.getElementById('exportProgressCount').textContent = `${approved}/${total}`;
+    document.getElementById('exportProgressText').textContent = 
+        approved >= total ? '🎉 Reward Unlocked! 2GB FREE!' : 'Keep sharing to earn 2GB FREE data!';
+    document.getElementById('exportStatus').textContent = 
+        approved >= total ? 'Completed' : 'In Progress';
+    document.getElementById('exportReferralCode').textContent = document.getElementById('referralCode').textContent;
+    
+    // Show export modal
+    const exportContent = document.getElementById('progressCardTemplate').innerHTML;
+    document.getElementById('exportContent').innerHTML = exportContent;
+    document.getElementById('exportContainer').style.display = 'flex';
+}
+
+function closeExport() {
+    document.getElementById('exportContainer').style.display = 'none';
+}
+
+function downloadPNG() {
+    const element = document.getElementById('exportContent').firstElementChild;
+    
+    html2canvas(element, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        logging: false
+    }).then(canvas => {
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `SOS-Progress-${currentUser}-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showNotification('Progress card downloaded as PNG!');
+    });
+}
+
+function loadAdminPanel() {
+    if (!isAdminAuthenticated) return;
+    
+    const referrals = db.getAll();
+    const stats = db.getStats();
+    
+    // Update stats
+    document.getElementById('totalReferrals').textContent = stats.total;
+    document.getElementById('pendingReferrals').textContent = stats.pending;
+    document.getElementById('approvedReferrals').textContent = stats.approved;
+    
+    // Update referrals list
+    const referralsList = document.getElementById('referralsList');
+    
+    if (referrals.length === 0) {
+        referralsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No referrals yet</div>';
+        return;
+    }
+    
+    referralsList.innerHTML = referrals.map(referral => `
+        <div class="referral-item ${referral.status}">
+            <div class="referral-info">
+                <div class="referral-details">
+                    <h4>${referral.referrerName} → ${referral.friendName}</h4>
+                    <p>Code: ${referral.referralCode}</p>
+                    <p><strong>Status: ${referral.status.toUpperCase()}</strong></p>
+                </div>
+                <div class="admin-actions">
+                    ${referral.status === 'pending' ? `
+                        <button class="btn-approve" onclick="approveReferral('${referral.id}')">✓</button>
+                        <button class="btn-deny" onclick="denyReferral('${referral.id}')">✗</button>
+                    ` : `
+                        <button class="btn-remove" onclick="removeReferral('${referral.id}')">Remove</button>
+                    `}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function approveReferral(referralId) {
+    if (!isAdminAuthenticated) {
+        showNotification('❌ Admin access required!', 'error');
+        return;
+    }
+    
+    if (db.updateStatus(referralId, 'approved')) {
+        showNotification('Referral approved!');
+        updateUserProgress();
+        loadAdminPanel();
+    }
+}
+
+function denyReferral(referralId) {
+    if (!isAdminAuthenticated) {
+        showNotification('❌ Admin access required!', 'error');
+        return;
+    }
+    
+    if (db.updateStatus(referralId, 'denied')) {
+        showNotification('Referral denied.');
+        updateUserProgress();
+        loadAdminPanel();
+    }
+}
+
+function removeReferral(referralId) {
+    if (!isAdminAuthenticated) {
+        showNotification('❌ Admin access required!', 'error');
+        return;
+    }
+    
+    if (db.removeReferral(referralId)) {
+        showNotification('Referral removed.');
+        updateUserProgress();
+        loadAdminPanel();
+    }
+}
+
+function claimReward() {
+    const approved = db.getUserReferrals(currentUser).filter(r => r.status === 'approved').length;
+    if (approved >= 5) {
+        showNotification('🎉 2GB Free Data credited to your account!', 'success');
+    } else {
+        showNotification('Need 5 approved referrals to claim reward.', 'error');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateUserProgress();
+    
+    // Update user name and referral code when changed
+    document.getElementById('userName').addEventListener('input', function() {
+        currentUser = this.value || 'Anonymous';
+        const code = `SOS-${currentUser.substring(0, 2).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+        document.getElementById('referralCode').textContent = code;
+        updateUserProgress();
+    });
+    
+    // Claim reward button
+    document.getElementById('claimRewardBtn').addEventListener('click', claimReward);
+    
+    // Mobile touch improvements
+    document.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        btn.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+    
+    // Close modals when clicking outside
+    document.getElementById('adminLoginModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAdminLogin();
+    });
+    
+    document.getElementById('exportContainer').addEventListener('click', function(e) {
+        if (e.target === this) closeExport();
+    });
+});
+</script>
+
+</body>
+</html>
