@@ -553,188 +553,25 @@
 </div>
 
 <script>
-// ===== JSONBIN.IO DATABASE (FREE & RELIABLE) =====
-class JSONBinDB {
+// ===== SIMPLIFIED DATABASE =====
+class GoogleSheetsDB {
     constructor() {
-        // ⚠️ REPLACE WITH YOUR ACTUAL API KEY ⚠️
-        this.apiKey = '$2a$10$E8Cr512mfa4DxAfEwiOWAemAReuWL5XDGnuZP5/LbK3eApEQBzBRe';
-        this.binId = ''; // Will be created automatically
-        this.baseURL = 'https://api.jsonbin.io/v3/b';
-        this.storageKey = 'sos_referrals_backup';
-        
-        // Initialize on first run
-        this.initializeBin();
-    }
-
-    async initializeBin() {
-        // Create bin on first run if doesn't exist
-        if (!localStorage.getItem('jsonbin_initialized')) {
-            await this.createBin();
-            localStorage.setItem('jsonbin_initialized', 'true');
-        }
-    }
-
-    async createBin() {
-        try {
-            const initialData = { referrals: [] };
-            const response = await fetch(this.baseURL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Master-Key': this.apiKey,
-                    'X-Bin-Name': 'SOS Bundles Referrals'
-                },
-                body: JSON.stringify(initialData)
-            });
-            
-            const result = await response.json();
-            if (result.metadata && result.metadata.id) {
-                this.binId = result.metadata.id;
-                localStorage.setItem('sos_bin_id', this.binId);
-                console.log('✅ JSONBin created:', this.binId);
-            }
-        } catch (error) {
-            console.log('❌ JSONBin creation failed, using localStorage');
-        }
+        this.storageKey = 'sos_referrals_data';
     }
 
     async addReferral(referrerName, referralCode) {
-        try {
-            await this.ensureBinExists();
-            
-            // 1. Get current data
-            const currentData = await this.getBinData();
-            const referrals = currentData.referrals || [];
-            
-            // 2. Create new referral
-            const newReferral = {
-                id: Date.now().toString(),
-                referrerName: referrerName,
-                referralCode: referralCode,
-                status: 'pending',
-                friendName: `Friend ${referrals.filter(r => r.referrerName === referrerName).length + 1}`,
-                timestamp: new Date().toISOString(),
-                source: 'jsonbin'
-            };
-            
-            referrals.push(newReferral);
-            
-            // 3. Save to JSONBin
-            const updateResult = await this.updateBinData({ referrals });
-            
-            if (updateResult.success) {
-                console.log('✅ Saved to JSONBin:', newReferral);
-                return { success: true, id: newReferral.id };
-            } else {
-                throw new Error('Update failed');
-            }
-            
-        } catch (error) {
-            console.error('JSONBin error:', error);
-            console.log('🔄 Falling back to localStorage...');
-            return this.saveToLocalStorage(referrerName, referralCode);
-        }
+        return this.saveToLocalStorage(referrerName, referralCode);
     }
 
     async getAllReferrals() {
-        try {
-            await this.ensureBinExists();
-            const data = await this.getBinData();
-            const referrals = data.referrals || [];
-            
-            console.log('✅ Loaded from JSONBin:', referrals.length, 'referrals');
-            return referrals;
-            
-        } catch (error) {
-            console.error('JSONBin fetch error:', error);
-            console.log('🔄 Using localStorage data...');
-            return this.getFromLocalStorage();
-        }
+        return this.getFromLocalStorage();
     }
 
     async updateStatus(referralId, status) {
-        try {
-            await this.ensureBinExists();
-            
-            const data = await this.getBinData();
-            const referrals = data.referrals || [];
-            const referral = referrals.find(r => r.id === referralId);
-            
-            if (referral) {
-                referral.status = status;
-                const result = await this.updateBinData({ referrals });
-                
-                if (result.success) {
-                    console.log('✅ Updated in JSONBin:', referralId, '->', status);
-                    
-                    // Also update localStorage backup
-                    this.updateLocalStorageStatus(referralId, status);
-                    
-                    return { success: true };
-                }
-            }
-            
-            throw new Error('Referral not found or update failed');
-            
-        } catch (error) {
-            console.error('JSONBin update error:', error);
-            return this.updateLocalStorageStatus(referralId, status);
-        }
+        return this.updateLocalStorageStatus(referralId, status);
     }
 
-    // ===== JSONBIN CORE METHODS =====
-    async ensureBinExists() {
-        if (!this.binId) {
-            const savedBinId = localStorage.getItem('sos_bin_id');
-            if (savedBinId) {
-                this.binId = savedBinId;
-            } else {
-                await this.createBin();
-            }
-        }
-    }
-
-    async getBinData() {
-        if (!this.binId) {
-            return { referrals: [] };
-        }
-        
-        const response = await fetch(`${this.baseURL}/${this.binId}/latest`, {
-            headers: {
-                'X-Master-Key': this.apiKey
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to fetch from JSONBin');
-        }
-        
-        const result = await response.json();
-        return result.record || { referrals: [] };
-    }
-
-    async updateBinData(data) {
-        if (!this.binId) {
-            throw new Error('No bin ID');
-        }
-        
-        const response = await fetch(`${this.baseURL}/${this.binId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Master-Key': this.apiKey
-            },
-            body: JSON.stringify(data)
-        });
-        
-        if (response.ok) {
-            return { success: true };
-        } else {
-            throw new Error('Update failed');
-        }
-    }
-
-    // ===== LOCALSTORAGE BACKUP =====
+    // ===== LOCALSTORAGE METHODS =====
     saveToLocalStorage(referrerName, referralCode) {
         const referrals = this.getFromLocalStorage();
         const newReferral = {
@@ -744,14 +581,14 @@ class JSONBinDB {
             status: 'pending',
             friendName: `Friend ${referrals.filter(r => r.referrerName === referrerName).length + 1}`,
             timestamp: new Date().toISOString(),
-            source: 'localStorage_backup'
+            source: 'localStorage'
         };
         
         referrals.push(newReferral);
         localStorage.setItem(this.storageKey, JSON.stringify(referrals));
         
-        console.log('💾 Saved to localStorage backup');
-        return { success: true, id: newReferral.id, fallback: true };
+        console.log('✅ Saved to localStorage:', newReferral);
+        return {success: true, id: newReferral.id};
     }
 
     getFromLocalStorage() {
@@ -765,13 +602,13 @@ class JSONBinDB {
         if (referral) {
             referral.status = status;
             localStorage.setItem(this.storageKey, JSON.stringify(referrals));
-            return { success: true, fallback: true };
+            console.log('✅ Updated in localStorage:', referralId, '->', status);
+            return {success: true};
         }
         
-        return { error: 'Referral not found' };
+        return {error: 'Referral not found'};
     }
 
-    // ===== USER METHODS =====
     async getUserReferrals(referrerName) {
         const allReferrals = await this.getAllReferrals();
         return allReferrals.filter(r => r.referrerName === referrerName);
@@ -789,7 +626,7 @@ class JSONBinDB {
 }
 
 // ===== INITIALIZE DATABASE =====
-const db = new JSONBinDB();
+const db = new GoogleSheetsDB();
 let currentUser = 'John Doe';
 let isAdminAuthenticated = false;
 const ADMIN_CODE = "800924";
@@ -961,7 +798,7 @@ async function loadAdminPanel() {
                         <p>Code: <strong>${referral.referralCode}</strong></p>
                         <p>Date: ${new Date(referral.timestamp).toLocaleDateString()}</p>
                         <p>Status: <strong>${referral.status.toUpperCase()}</strong></p>
-                        <p><small>Source: ${referral.source || 'jsonbin'}</small></p>
+                        <p><small>Source: ${referral.source || 'localStorage'}</small></p>
                     </div>
                     <div class="admin-actions">
                         ${referral.status === 'pending' ? `
