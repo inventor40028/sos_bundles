@@ -553,7 +553,6 @@
 </div>
 
 <script>
-// ===== GOOGLE SHEETS BACKEND INTEGRATION =====
 // ===== GOOGLE SHEETS DATABASE WITH JSONP =====
 class GoogleSheetsDB {
     constructor() {
@@ -564,7 +563,6 @@ class GoogleSheetsDB {
         try {
             console.log('Saving to Google Sheets via JSONP...');
             
-            // Use JSONP for POST-like requests
             const result = await this.jsonpRequest('add_referral', {
                 referrerName: referrerName,
                 referralCode: referralCode
@@ -613,7 +611,6 @@ class GoogleSheetsDB {
             const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
             let url = `${this.webAppUrl}?action=${action}&callback=${callbackName}`;
             
-            // Add data as URL parameters for POST-like requests
             if (data) {
                 Object.keys(data).forEach(key => {
                     url += `&${key}=${encodeURIComponent(data[key])}`;
@@ -623,9 +620,7 @@ class GoogleSheetsDB {
             const script = document.createElement('script');
             script.src = url;
             
-            // Define callback
             window[callbackName] = (response) => {
-                // Clean up
                 delete window[callbackName];
                 if (script.parentNode) {
                     document.body.removeChild(script);
@@ -638,7 +633,6 @@ class GoogleSheetsDB {
                 }
             };
             
-            // Error handling
             script.onerror = () => {
                 delete window[callbackName];
                 if (script.parentNode) {
@@ -647,10 +641,8 @@ class GoogleSheetsDB {
                 reject(new Error('Network error'));
             };
             
-            // Add to page
             document.body.appendChild(script);
             
-            // Timeout after 5 seconds
             setTimeout(() => {
                 if (window[callbackName]) {
                     delete window[callbackName];
@@ -719,6 +711,370 @@ class GoogleSheetsDB {
         };
     }
 }
+
+// ===== INITIALIZE DATABASE =====
+const db = new GoogleSheetsDB();
+let currentUser = 'John Doe';
+
+// ===== NOTIFICATION SYSTEM =====
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    notification.textContent = message;
+    notification.style.background = type === 'success' ? '#2ECC71' : '#E74C3C';
+    notification.style.display = 'block';
+    
+    setTimeout(() => {
+        notification.style.display = 'none';
+    }, 3000);
+}
+
+// ===== USER PROGRESS SYSTEM =====
+async function updateUserProgress() {
+    const userReferrals = await db.getUserReferrals(currentUser);
+    const approved = userReferrals.filter(r => r.status === 'approved').length;
+    const pending = userReferrals.filter(r => r.status === 'pending').length;
+    const denied = userReferrals.filter(r => r.status === 'denied').length;
+
+    console.log('User progress:', {approved, pending, denied, total: userReferrals.length});
+
+    // Update progress bar
+    const percentage = (approved / 5) * 100;
+    document.getElementById('progressBarFill').style.width = `${percentage}%`;
+
+    // Update circles and status
+    for (let i = 1; i <= 5; i++) {
+        const circle = document.getElementById(`circle-${i}`);
+        const status = document.getElementById(`status-${i}`);
+        
+        if (i <= approved) {
+            circle.className = 'checkpoint-circle approved';
+            circle.innerHTML = '✓';
+            status.textContent = 'Approved';
+            status.className = 'status-indicator status-approved';
+        } else if (i <= approved + pending) {
+            circle.className = 'checkpoint-circle pending';
+            circle.innerHTML = i;
+            status.textContent = 'Pending';
+            status.className = 'status-indicator status-pending';
+        } else if (i <= approved + pending + denied) {
+            circle.className = 'checkpoint-circle denied';
+            circle.innerHTML = '✗';
+            status.textContent = 'Denied';
+            status.className = 'status-indicator status-denied';
+        } else {
+            circle.className = 'checkpoint-circle';
+            circle.innerHTML = i;
+            status.textContent = 'Pending';
+            status.className = 'status-indicator status-pending';
+        }
+    }
+
+    // Update progress text
+    const progressText = document.getElementById('progressText');
+    if (approved >= 5) {
+        progressText.innerHTML = `🎉 All 5 referrals approved! (100% Complete)`;
+        document.getElementById('claimRewardBtn').disabled = false;
+    } else {
+        progressText.innerHTML = `${approved} approved, ${pending} pending. <strong>${5-approved} more needed!</strong> (${percentage.toFixed(0)}% Complete)`;
+        document.getElementById('claimRewardBtn').disabled = true;
+    }
+}
+
+// ===== REFERRAL SHARING =====
+async function shareReferral() {
+    const userName = document.getElementById('userName').value || 'Anonymous';
+    const referralCode = document.getElementById('referralCode').textContent;
+    
+    // Validate input
+    if (!userName.trim()) {
+        showNotification('Please enter your name!', 'error');
+        return;
+    }
+
+    // Save to database
+    showNotification('Saving referral...', 'success');
+    
+    const result = await db.addReferral(userName, referralCode);
+    
+    if (result.success) {
+        const message = `Join me on SOS BUNDLES! 🚀 Use my referral code: ${referralCode} - ${userName}\n\nGet amazing non-expiry data bundles!\n\nVisit: https://inventor40028.github.io/sos_bundles/sos_bundle_website`;
+        
+        // Mobile-friendly share
+        if (navigator.share) {
+            navigator.share({
+                title: 'SOS BUNDLES Referral',
+                text: message,
+                url: 'https://inventor40028.github.io/sos_bundles/sos_bundle_website'
+            }).catch(() => {
+                // Fallback to clipboard
+                navigator.clipboard.writeText(message).then(() => {
+                    showNotification('Referral shared! Message copied to clipboard!');
+                });
+            });
+        } else {
+            // Fallback for desktop
+            navigator.clipboard.writeText(message).then(() => {
+                showNotification('Referral shared! Message copied to clipboard!');
+            });
+        }
+        
+        // Update displays
+        await updateUserProgress();
+        if (isAdminAuthenticated) {
+            await loadAdminPanel();
+        }
+        
+        console.log('Referral saved successfully:', result);
+        
+    } else {
+        showNotification('Failed to save referral. Please try again.', 'error');
+    }
+}
+
+// ===== ADMIN SYSTEM =====
+const ADMIN_CODE = "800924";
+let isAdminAuthenticated = false;
+
+function openAdminLogin() {
+    document.getElementById('adminLoginModal').style.display = 'flex';
+    document.getElementById('adminCodeInput').focus();
+}
+
+function closeAdminLogin() {
+    document.getElementById('adminLoginModal').style.display = 'none';
+    document.getElementById('adminCodeInput').value = '';
+}
+
+function formatAdminCode(input) {
+    input.value = input.value.replace(/[^0-9]/g, '');
+}
+
+function verifyAdminCode() {
+    const enteredCode = document.getElementById('adminCodeInput').value;
+    
+    if (enteredCode === ADMIN_CODE) {
+        isAdminAuthenticated = true;
+        document.getElementById('adminPanel').style.display = 'block';
+        closeAdminLogin();
+        showNotification('🔓 Admin access granted!', 'success');
+        loadAdminPanel();
+    } else {
+        showNotification('❌ Invalid admin code!', 'error');
+        document.getElementById('adminCodeInput').value = '';
+        document.getElementById('adminCodeInput').focus();
+    }
+}
+
+async function loadAdminPanel() {
+    if (!isAdminAuthenticated) return;
+    
+    showNotification('Loading referrals...', 'success');
+    
+    try {
+        const referrals = await db.getAllReferrals();
+        const stats = await db.getStats();
+        
+        console.log('Admin panel data:', {referrals, stats});
+
+        // Update stats
+        document.getElementById('totalReferrals').textContent = stats.total;
+        document.getElementById('pendingReferrals').textContent = stats.pending;
+        document.getElementById('approvedReferrals').textContent = stats.approved;
+        
+        // Update referrals list
+        const referralsList = document.getElementById('referralsList');
+        
+        if (referrals.length === 0) {
+            referralsList.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No referrals yet</div>';
+            return;
+        }
+        
+        // Sort by timestamp (newest first)
+        referrals.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        
+        referralsList.innerHTML = referrals.map(referral => `
+            <div class="referral-item ${referral.status}">
+                <div class="referral-info">
+                    <div class="referral-details">
+                        <h4>${referral.referrerName} → ${referral.friendName}</h4>
+                        <p>Code: <strong>${referral.referralCode}</strong></p>
+                        <p>Date: ${new Date(referral.timestamp).toLocaleDateString()}</p>
+                        <p>Status: <strong>${referral.status.toUpperCase()}</strong></p>
+                        ${referral.source ? `<p><small>Source: ${referral.source}</small></p>` : ''}
+                    </div>
+                    <div class="admin-actions">
+                        ${referral.status === 'pending' ? `
+                            <button class="btn-approve" onclick="approveReferral('${referral.id}')">✓ Approve</button>
+                            <button class="btn-deny" onclick="denyReferral('${referral.id}')">✗ Deny</button>
+                        ` : `
+                            <button class="btn-remove" onclick="removeReferral('${referral.id}')">🗑 Remove</button>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        
+        showNotification(`Loaded ${referrals.length} referrals`, 'success');
+        
+    } catch (error) {
+        console.error('Error loading admin panel:', error);
+        showNotification('Error loading referrals', 'error');
+    }
+}
+
+async function approveReferral(referralId) {
+    if (!isAdminAuthenticated) {
+        showNotification('❌ Admin access required!', 'error');
+        return;
+    }
+    
+    showNotification('Approving referral...', 'success');
+    
+    const result = await db.updateStatus(referralId, 'approved');
+    if (result.success) {
+        showNotification('✅ Referral approved!');
+        await updateUserProgress();
+        await loadAdminPanel();
+    } else {
+        showNotification('❌ Failed to approve referral', 'error');
+    }
+}
+
+async function denyReferral(referralId) {
+    if (!isAdminAuthenticated) {
+        showNotification('❌ Admin access required!', 'error');
+        return;
+    }
+    
+    showNotification('Denying referral...', 'success');
+    
+    const result = await db.updateStatus(referralId, 'denied');
+    if (result.success) {
+        showNotification('❌ Referral denied.');
+        await updateUserProgress();
+        await loadAdminPanel();
+    } else {
+        showNotification('❌ Failed to deny referral', 'error');
+    }
+}
+
+async function removeReferral(referralId) {
+    if (!isAdminAuthenticated) {
+        showNotification('❌ Admin access required!', 'error');
+        return;
+    }
+    
+    showNotification('Removing referral...', 'success');
+    const result = await db.updateStatus(referralId, 'denied');
+    
+    if (result.success) {
+        showNotification('🗑 Referral removed.');
+        await updateUserProgress();
+        await loadAdminPanel();
+    } else {
+        showNotification('❌ Failed to remove referral', 'error');
+    }
+}
+
+// ===== PNG EXPORT SYSTEM =====
+async function exportProgress() {
+    const userReferrals = await db.getUserReferrals(currentUser);
+    const approved = userReferrals.filter(r => r.status === 'approved').length;
+    const total = 5;
+    
+    // Update export template
+    document.getElementById('exportProgressCount').textContent = `${approved}/${total}`;
+    document.getElementById('exportProgressText').textContent = 
+        approved >= total ? '🎉 Reward Unlocked! 2GB FREE!' : 'Keep sharing to earn 2GB FREE data!';
+    document.getElementById('exportStatus').textContent = 
+        approved >= total ? 'Completed' : 'In Progress';
+    document.getElementById('exportReferralCode').textContent = document.getElementById('referralCode').textContent;
+    
+    // Show export modal
+    const exportContent = document.getElementById('progressCardTemplate').innerHTML;
+    document.getElementById('exportContent').innerHTML = exportContent;
+    document.getElementById('exportContainer').style.display = 'flex';
+}
+
+function closeExport() {
+    document.getElementById('exportContainer').style.display = 'none';
+}
+
+function downloadPNG() {
+    const element = document.getElementById('exportContent').firstElementChild;
+    
+    html2canvas(element, {
+        backgroundColor: null,
+        scale: 2,
+        useCORS: true,
+        logging: false
+    }).then(canvas => {
+        const link = document.createElement('a');
+        link.download = `SOS-Progress-${currentUser}-${Date.now()}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+        showNotification('📸 Progress card downloaded as PNG!');
+    });
+}
+
+// ===== REWARD CLAIM SYSTEM =====
+async function claimReward() {
+    const userReferrals = await db.getUserReferrals(currentUser);
+    const approved = userReferrals.filter(r => r.status === 'approved').length;
+    
+    if (approved >= 5) {
+        showNotification('🎉 2GB Free Data credited to your account! Thank you!', 'success');
+    } else {
+        showNotification(`You need ${5-approved} more approved referrals to claim the reward.`, 'error');
+    }
+}
+
+// ===== INITIALIZATION =====
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('Initializing SOS Bundles...');
+    
+    // Initialize user progress
+    await updateUserProgress();
+    
+    // Update user name and referral code when changed
+    document.getElementById('userName').addEventListener('input', function() {
+        currentUser = this.value || 'Anonymous';
+        const code = `SOS-${currentUser.substring(0, 2).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
+        document.getElementById('referralCode').textContent = code;
+        updateUserProgress();
+    });
+    
+    // Claim reward button
+    document.getElementById('claimRewardBtn').addEventListener('click', claimReward);
+    
+    // Mobile touch improvements
+    document.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        btn.addEventListener('touchend', function() {
+            this.style.transform = 'scale(1)';
+        });
+    });
+    
+    // Close modals when clicking outside
+    document.getElementById('adminLoginModal').addEventListener('click', function(e) {
+        if (e.target === this) closeAdminLogin();
+    });
+    
+    document.getElementById('exportContainer').addEventListener('click', function(e) {
+        if (e.target === this) closeExport();
+    });
+    
+    // Admin code input - allow Enter key
+    document.getElementById('adminCodeInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            verifyAdminCode();
+        }
+    });
+    
+    console.log('SOS Bundles initialized successfully!');
+});
 </script>
 
 </body>
