@@ -31,7 +31,7 @@
 
     .promo {
         position: fixed;
-        top: 10px;
+        top: 60px;
         right: 10px;
         background: #ff0000;
         color: white;
@@ -41,6 +41,8 @@
         cursor: pointer;
         animation: promoGlow 1.5s infinite alternate;
         z-index: 999;
+        text-decoration: none;
+        display: inline-block;
     }
     @keyframes promoGlow {
         0% { transform: scale(1); box-shadow: 0 0 10px red; }
@@ -109,6 +111,8 @@
         cursor: pointer;
         font-weight: bold;
         animation: supportShake 60s infinite;
+        text-decoration: none;
+        display: inline-block;
     }
     @keyframes supportShake {
         0% { transform: rotate(0); }
@@ -126,13 +130,23 @@
         border-radius: 12px;
     }
 
+    .dark-mode{ background:#111 !important; color:#fff !important; }
+    .dark-mode .bundle-box{ background:#222 !important; color:#fff; }
+    .dark-mode header{ background:#222 !important; color:#fff; }
+    .dark-mode .about{ background:#222 !important; color:#fff; }
 </style>
 </head>
 <body>
 
 <header>⭐ SOS BUNDLE - NON EXPIRY DATA ⭐</header>
 
-<div class="promo" onclick="showPromo()">🔥 Invite 5 friends & Get 2GB Free! 🔥</div>
+<!-- Theme Toggle Icon -->
+<div style="position:absolute; top:10px; left:10px; z-index:999;">
+    <img src="https://img.icons8.com/ios-filled/30/000000/day-and-night.png" onclick="toggleTheme()" style="width:30px; height:30px; cursor:pointer;" />
+</div>
+
+<!-- Fixed Promo Button -->
+<a class="promo" href="https://wa.me/233598046499?text=HERE%20FOR%20PROMO%20OFFER!">🔥 Invite 5 friends & Get 2GB Free! 🔥</a>
 
 <div class="network-select">
     <button class="network-btn" style="background:#ffcb05; color:black;" onclick="showBundles('mtn')">MTN 🟡</button>
@@ -199,8 +213,8 @@ function showBundles(network) {
     }
 }
 
-function showPromo() {
-    alert("🔥 INVITE 5 FRIENDS & GET 2GB FREE! 🔥\n\nTo start promo: Contact WhatsApp +233598046499 and send 'PROMO'.");
+function toggleTheme(){
+    document.body.classList.toggle('dark-mode');
 }
 </script>
 
