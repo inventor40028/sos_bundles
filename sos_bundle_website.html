@@ -11,6 +11,7 @@
         background: linear-gradient(135deg, #ff0000, #004cff, #ffe600, #ffffff);
         background-size: 300% 300%;
         animation: gradientShift 12s ease infinite;
+        padding-top: 20px;
     }
 
     @keyframes gradientShift {
@@ -27,41 +28,51 @@
         font-size: 22px;
         background: rgba(255,255,255,0.5);
         backdrop-filter: blur(5px);
+        margin: 0 15px;
+        border-radius: 10px;
     }
 
     .promo {
         position: fixed;
-        top: 60px;
-        right: 10px;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
         background: #ff0000;
         color: white;
-        padding: 10px 15px;
+        padding: 12px 18px;
         border-radius: 10px;
         font-weight: bold;
         cursor: pointer;
         animation: promoGlow 1.5s infinite alternate;
-        z-index: 999;
         text-decoration: none;
         display: inline-block;
+        font-size: 15px;
+        z-index: 999;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        white-space: nowrap;
     }
     @keyframes promoGlow {
-        0% { transform: scale(1); box-shadow: 0 0 10px red; }
-        100% { transform: scale(1.1); box-shadow: 0 0 20px yellow; }
+        0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 10px red; }
+        100% { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 20px yellow; }
     }
 
     .network-select {
         text-align: center;
-        margin-top: 20px;
+        margin: 30px 0 20px 0;
+        padding-top: 20px;
     }
     .network-btn {
-        padding: 12px 20px;
-        margin: 10px;
+        padding: 15px 25px;
+        margin: 8px;
         border-radius: 12px;
         border: none;
         font-size: 18px;
         cursor: pointer;
         color: white;
         transition: 0.3s;
+        font-weight: bold;
+        min-width: 140px;
     }
     .network-btn:hover {
         transform: scale(1.05);
@@ -76,8 +87,8 @@
 
     .bundle-box {
         background: rgba(255,255,255,0.85);
-        margin: 10px auto;
-        padding: 15px;
+        margin: 15px auto;
+        padding: 20px;
         max-width: 350px;
         border-radius: 12px;
         box-shadow: 0 0 10px rgba(0,0,0,0.2);
@@ -90,14 +101,15 @@
     }
 
     .wa-btn {
-        margin-top: 10px;
+        margin-top: 15px;
         display: inline-block;
-        padding: 10px 15px;
+        padding: 12px 20px;
         background: #25D366;
         color: white;
         border-radius: 8px;
         text-decoration: none;
         font-weight: bold;
+        font-size: 16px;
     }
 
     .support-btn {
@@ -113,6 +125,7 @@
         animation: supportShake 60s infinite;
         text-decoration: none;
         display: inline-block;
+        z-index: 1000;
     }
     @keyframes supportShake {
         0% { transform: rotate(0); }
@@ -130,10 +143,22 @@
         border-radius: 12px;
     }
 
+    .theme-toggle {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 999;
+        background: rgba(255,255,255,0.8);
+        border-radius: 50%;
+        padding: 5px;
+        cursor: pointer;
+    }
+
     .dark-mode{ background:#111 !important; color:#fff !important; }
     .dark-mode .bundle-box{ background:#222 !important; color:#fff; }
     .dark-mode header{ background:#222 !important; color:#fff; }
     .dark-mode .about{ background:#222 !important; color:#fff; }
+    .dark-mode .theme-toggle { background: #333 !important; }
 </style>
 </head>
 <body>
@@ -141,13 +166,14 @@
 <header>⭐SOS BUNDLE - NON EXPIRY⭐</header>
 
 <!-- Theme Toggle Icon -->
-<div style="position:absolute; top:10px; left:10px; z-index:999;">
-    <img src="https://img.icons8.com/ios-filled/30/000000/day-and-night.png" onclick="toggleTheme()" style="width:30px; height:30px; cursor:pointer;" />
+<div class="theme-toggle">
+    <img src="https://img.icons8.com/ios-filled/30/000000/day-and-night.png" onclick="toggleTheme()" style="width:30px; height:30px;" />
 </div>
 
-<!-- Fixed Promo Button -->
+<!-- Floating Promo Button - NOW CENTERED -->
 <a class="promo" href="https://wa.me/233598046499?text=HERE%20FOR%20PROMO%20OFFER!">🔥 Invite 5 friends & Get 2GB Free! 🔥</a>
 
+<!-- Network Selection Buttons -->
 <div class="network-select">
     <button class="network-btn" style="background:#ffcb05; color:black;" onclick="showBundles('mtn')">MTN 🟡</button>
     <button class="network-btn" style="background:#e00000;" onclick="showBundles('telecel')">Telecel 🔴</button>
@@ -199,7 +225,7 @@ function showBundles(network) {
     document.querySelectorAll('.bundle-container').forEach(c => c.style.display = 'none');
     const container = document.getElementById(network);
     container.style.display = 'block';
-    container.innerHTML = `<h2>${network.toUpperCase()} Non-Expiry Bundles</h2>`;
+    container.innerHTML = `<h2 style="text-align:center; color:inherit;">${network.toUpperCase()} Non-Expiry Bundles</h2>`;
 
     for (const [gb, price] of Object.entries(data[network])) {
         container.innerHTML += `
@@ -216,6 +242,11 @@ function showBundles(network) {
 function toggleTheme(){
     document.body.classList.toggle('dark-mode');
 }
+
+// Show MTN bundles by default on page load
+document.addEventListener('DOMContentLoaded', function() {
+    showBundles('mtn');
+});
 </script>
 
 </body>
