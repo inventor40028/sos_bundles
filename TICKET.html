@@ -553,7 +553,7 @@
 </div>
 
 <script>
-// ===== SIMPLIFIED DATABASE =====
+// ===== FIXED DATABASE CLASS =====
 class GoogleSheetsDB {
     constructor() {
         this.storageKey = 'sos_referrals_data';
@@ -569,6 +569,11 @@ class GoogleSheetsDB {
 
     async updateStatus(referralId, status) {
         return this.updateLocalStorageStatus(referralId, status);
+    }
+
+    // ===== NEW: REMOVE REFERRAL METHOD =====
+    async removeReferral(referralId) {
+        return this.removeFromLocalStorage(referralId);
     }
 
     // ===== LOCALSTORAGE METHODS =====
@@ -603,6 +608,21 @@ class GoogleSheetsDB {
             referral.status = status;
             localStorage.setItem(this.storageKey, JSON.stringify(referrals));
             console.log('✅ Updated in localStorage:', referralId, '->', status);
+            return {success: true};
+        }
+        
+        return {error: 'Referral not found'};
+    }
+
+    // ===== NEW: REMOVE FROM LOCALSTORAGE =====
+    removeFromLocalStorage(referralId) {
+        const referrals = this.getFromLocalStorage();
+        const referralIndex = referrals.findIndex(r => r.id === referralId);
+        
+        if (referralIndex !== -1) {
+            referrals.splice(referralIndex, 1);
+            localStorage.setItem(this.storageKey, JSON.stringify(referrals));
+            console.log('✅ Removed from localStorage:', referralId);
             return {success: true};
         }
         
@@ -852,15 +872,16 @@ async function denyReferral(referralId) {
     }
 }
 
+// ===== FIXED REMOVE REFERRAL FUNCTION =====
 async function removeReferral(referralId) {
     if (!isAdminAuthenticated) {
         showNotification('❌ Admin access required!', 'error');
         return;
     }
     
-    const result = await db.updateStatus(referralId, 'denied');
+    const result = await db.removeReferral(referralId);
     if (result.success) {
-        showNotification('🗑 Referral removed.');
+        showNotification('🗑 Referral removed successfully!');
         await updateUserProgress();
         await loadAdminPanel();
     } else {
