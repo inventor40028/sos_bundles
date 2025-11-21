@@ -591,19 +591,51 @@ class GoogleSheetsDB {
         }
     }
 
-    async getAllReferrals() {
-        try {
-            console.log('Fetching from Google Sheets...');
-            const response = await fetch(`${this.webAppUrl}?action=get_referrals`);
-            const result = await response.json();
-            console.log('Google Sheets data:', result);
-            return result.referrals || [];
-        } catch (error) {
-            console.error('Error getting referrals from Google Sheets:', error);
-            console.log('Falling back to localStorage...');
-            return this.fallbackGetReferrals();
-        }
-    }
+async getAllReferrals() {
+    return new Promise((resolve) => {
+        const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        const url = `${this.webAppUrl}?action=get_referrals&callback=${callbackName}`;
+        
+        // Create script tag for JSONP
+        const script = document.createElement('script');
+        script.src = url;
+        
+        // Define the callback function
+        window[callbackName] = (data) => {
+            // Clean up
+            delete window[callbackName];
+            document.body.removeChild(script);
+            
+            console.log('JSONP success:', data);
+            resolve(data.referrals || []);
+        };
+        
+        // Error handling
+        script.onerror = () => {
+            delete window[callbackName];
+            if (script.parentNode) {
+                document.body.removeChild(script);
+            }
+            console.log('JSONP failed, using localStorage fallback');
+            resolve(this.fallbackGetReferrals());
+        };
+        
+        // Add to page
+        document.body.appendChild(script);
+        
+        // Timeout fallback (3 seconds)
+        setTimeout(() => {
+            if (window[callbackName]) {
+                delete window[callbackName];
+                if (script.parentNode) {
+                    document.body.removeChild(script);
+                }
+                console.log('JSONP timeout, using localStorage');
+                resolve(this.fallbackGetReferrals());
+            }
+        }, 3000);
+    });
+}
 
     async updateStatus(referralId, status) {
         try {
