@@ -94,6 +94,30 @@
             font-size: 14px;
         }
 
+        .custom-code-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .custom-code-container input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        .custom-code-container button {
+            padding: 12px 15px;
+            background: var(--color-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
         .progress-circles {
             display: flex;
             justify-content: space-between;
@@ -379,8 +403,7 @@
 
         /* Share Progress Card */
         .progress-card {
-            background: linear-gradient(135deg, var(--color-dark) 0%, var(--color-blue) 100%);
-            border-radius: 15px;
+    background: linear-gradient(135deg, #1565c0 0%, #1976d2 50%, #1e88e5 100%);            border-radius: 15px;
             padding: 25px;
             color: white;
             text-align: center;
@@ -412,6 +435,11 @@
             font-weight: 800;
             color: var(--color-yellow);
             margin-bottom: 10px;
+        }
+        
+        .progress-card .user-progress {
+            margin: 15px 0;
+            font-size: 1.1em;
         }
     </style>
 </head>
@@ -463,6 +491,11 @@
             <div class="referral-code">
                 <strong>Your Referral Code:</strong> 
                 <span id="referralCode">SOS-JD1234</span>
+            </div>
+            
+            <div class="custom-code-container">
+                <input type="text" id="customCodeInput" placeholder="Custom code (optional)" maxlength="10">
+                <button onclick="applyCustomCode()">Apply</button>
             </div>
 
             <div class="progress-circles">
@@ -543,8 +576,9 @@
         <h3>Referral Progress</h3>
         <div class="progress-count" id="exportProgressCount">0/5</div>
         <div class="progress-text" id="exportProgressText">Keep sharing to earn 2GB FREE data!</div>
-        <div style="margin: 15px 0; font-size: 0.9em;">
-            Status: <strong id="exportStatus">In Progress</strong>
+        <div class="user-progress" id="exportUserProgress">
+            Status: <strong id="exportStatus">In Progress</strong><br>
+            <span id="exportUserName">John Doe</span>'s Progress
         </div>
         <div style="font-size: 0.8em; opacity: 0.8;">
             Share your code: <strong id="exportReferralCode">SOS-XXXXXX</strong>
@@ -557,6 +591,7 @@
 class GoogleSheetsDB {
     constructor() {
         this.storageKey = 'sos_referrals_data';
+        this.customCodesKey = 'sos_custom_codes';
     }
 
     async addReferral(referrerName, referralCode) {
@@ -643,6 +678,32 @@ class GoogleSheetsDB {
             denied: referrals.filter(r => r.status === 'denied').length
         };
     }
+    
+    // ===== CUSTOM CODE METHODS =====
+    saveCustomCode(userName, customCode) {
+        const customCodes = this.getCustomCodes();
+        // Remove any existing code for this user
+        const filteredCodes = customCodes.filter(code => code.userName !== userName);
+        // Add the new code
+        filteredCodes.push({ userName, customCode });
+        localStorage.setItem(this.customCodesKey, JSON.stringify(filteredCodes));
+        return {success: true};
+    }
+    
+    getCustomCodes() {
+        return JSON.parse(localStorage.getItem(this.customCodesKey)) || [];
+    }
+    
+    getCustomCodeForUser(userName) {
+        const customCodes = this.getCustomCodes();
+        const userCode = customCodes.find(code => code.userName === userName);
+        return userCode ? userCode.customCode : null;
+    }
+    
+    isCustomCodeTaken(customCode) {
+        const customCodes = this.getCustomCodes();
+        return customCodes.some(code => code.customCode === customCode);
+    }
 }
 
 // ===== INITIALIZE DATABASE =====
@@ -661,6 +722,53 @@ function showNotification(message, type = 'success') {
     setTimeout(() => {
         notification.style.display = 'none';
     }, 3000);
+}
+
+// ===== REFERRAL CODE GENERATION =====
+function generateReferralCode(userName, useCustomCode = false) {
+    // Check if there's a custom code for this user
+    const customCode = db.getCustomCodeForUser(userName);
+    
+    if (customCode && useCustomCode) {
+        return `SOS-${customCode}`;
+    }
+    
+    // Generate a standard code
+    const initials = userName.substring(0, 2).toUpperCase();
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    return `SOS-${initials}${randomNum}`;
+}
+
+// ===== CUSTOM CODE APPLICATION =====
+function applyCustomCode() {
+    const customCodeInput = document.getElementById('customCodeInput');
+    const customCode = customCodeInput.value.trim().toUpperCase();
+    
+    if (!customCode) {
+        showNotification('Please enter a custom code!', 'error');
+        return;
+    }
+    
+    // Validate custom code (alphanumeric, max 10 chars)
+    if (!/^[A-Z0-9]{1,10}$/.test(customCode)) {
+        showNotification('Custom code must be 1-10 alphanumeric characters!', 'error');
+        return;
+    }
+    
+    // Check if code is already taken
+    if (db.isCustomCodeTaken(customCode)) {
+        showNotification('This custom code is already taken!', 'error');
+        return;
+    }
+    
+    // Save the custom code
+    db.saveCustomCode(currentUser, customCode);
+    
+    // Update the referral code display
+    document.getElementById('referralCode').textContent = `SOS-${customCode}`;
+    
+    showNotification('Custom code applied successfully!');
+    customCodeInput.value = '';
 }
 
 // ===== USER PROGRESS SYSTEM =====
@@ -895,15 +1003,28 @@ async function exportProgress() {
     const approved = userReferrals.filter(r => r.status === 'approved').length;
     const total = 5;
     
-    document.getElementById('exportProgressCount').textContent = `${approved}/${total}`;
-    document.getElementById('exportProgressText').textContent = 
-        approved >= total ? '🎉 Reward Unlocked! 2GB FREE!' : 'Keep sharing to earn 2GB FREE data!';
-    document.getElementById('exportStatus').textContent = 
-        approved >= total ? 'Completed' : 'In Progress';
-    document.getElementById('exportReferralCode').textContent = document.getElementById('referralCode').textContent;
+    // Get current user name and referral code
+    const currentUserName = document.getElementById('userName').value || 'Anonymous';
+    const currentReferralCode = document.getElementById('referralCode').textContent;
     
-    const exportContent = document.getElementById('progressCardTemplate').innerHTML;
-    document.getElementById('exportContent').innerHTML = exportContent;
+    // Create a fresh progress card with current data
+    const progressCard = `
+        <div class="progress-card">
+            <div class="sos-logo">SOS BUNDLES</div>
+            <h3>Referral Progress</h3>
+            <div class="progress-count">${approved}/${total}</div>
+            <div class="progress-text">${approved >= total ? '🎉 Reward Unlocked! 2GB FREE!' : 'Keep sharing to earn 2GB FREE data!'}</div>
+            <div class="user-progress">
+                Status: <strong>${approved >= total ? 'Completed' : 'In Progress'}</strong><br>
+                ${currentUserName}'s Progress
+            </div>
+            <div style="font-size: 0.8em; opacity: 0.8;">
+                Share your code: <strong>${currentReferralCode}</strong>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('exportContent').innerHTML = progressCard;
     document.getElementById('exportContainer').style.display = 'flex';
 }
 
@@ -944,12 +1065,22 @@ async function claimReward() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('Initializing SOS Bundles...');
     
+    // Initialize with a referral code
+    const initialCode = generateReferralCode(currentUser);
+    document.getElementById('referralCode').textContent = initialCode;
+    
     await updateUserProgress();
     
     document.getElementById('userName').addEventListener('input', function() {
         currentUser = this.value || 'Anonymous';
-        const code = `SOS-${currentUser.substring(0, 2).toUpperCase()}${Math.floor(1000 + Math.random() * 9000)}`;
-        document.getElementById('referralCode').textContent = code;
+        // Check if user has a custom code
+        const customCode = db.getCustomCodeForUser(currentUser);
+        if (customCode) {
+            document.getElementById('referralCode').textContent = `SOS-${customCode}`;
+        } else {
+            const code = generateReferralCode(currentUser);
+            document.getElementById('referralCode').textContent = code;
+        }
         updateUserProgress();
     });
     
